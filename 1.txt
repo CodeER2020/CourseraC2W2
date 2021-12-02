@@ -1,0 +1,352 @@
+****** visibilidad pantalla ******
+
+Application.ScreenUpdating = False
+
+
+****** Abrir WB ******
+
+Workbooks.Open ("C:\Users\ERANG1\Documents\DOCUS\Desarrollo x\ERAR_Payments details.xlsx")
+
+******  Copiar y pegar ******
+
+Workbooks("ERAR_Payments details.xlsx").Worksheets("page").Range("A2:M100000").Copy _
+Workbooks("Documentos SAP pagos.xlsm").Worksheets("ER Approved").Range("A2:M100000")  'copy
+ 
+ Application.CutCopyMode = False
+
+
+****** Pegar como valor ******
+
+Workbooks("Documentos SAP pagos.xlsm").Worksheets("SAP").Range("H2:H1000000").Copy
+Workbooks("Documentos SAP pagos.xlsm").Worksheets("SAP").Range("H2:H1000000").PasteSpecial Paste:=xlPasteValues
+ 
+
+******  Formula en VBA ****** 
+
+Workbooks("Documentos SAP pagos.xlsm").Worksheets("Final").Range("P2:P10000").Formula = "=VLOOKUP(F2,SAP!$A$2:$H$1000000,7,0)"
+
+
+******  Cerrar WB & salvar ****** 
+
+
+Workbooks("ERAR_Payments details.xlsx").Close ([savechange:=false])
+Workbooks("SAP.xlsx").Close ([savechange:=false])
+
+
+******  Ocultar / mostrar pestañas ****** 
+
+Sheets("SAP").Visible = True
+
+
+****** Fechas ****** 
+
+Workbooks("Exp.xlsm").Worksheets("BW").Range("K2:K50000").NumberFormat = "dd/mm/yyyy"
+
+
+****** Formato Curr ****** 
+
+Workbooks("Exp.xlsm").Worksheets("BW").Range("K2:K50000").NumberFormat = "$#,##0.00"
+
+
+
+
+****** Eliminar filas ****** 
+
+Sub test()
+
+Dim ws As Worksheet
+Dim last As Long
+Dim i As Long
+
+For Each ws In Worksheets(Array("Test"))
+    ws.Activate
+    last = Cells(Rows.Count, "A").End(xlUp).Row 'Delete rows
+    For i = last To 2 Step -1
+        If Cells(i, "F").Value = "ELIMINAR" Then
+            Cells(i, "F").EntireRow.Delete
+        End If
+     Next i
+    Next ws
+    
+End Sub
+
+
+****** llamar otra macro ****** 
+
+Call Openorder
+
+
+****** Tabla pivote ******
+
+Dim PSheet As Worksheet
+Dim DSheet As Worksheet
+Dim LastRow As Long
+Dim LastCol As Long
+Dim PRange As Range
+Dim PCache As PivotCache
+Dim Ptable As PivotTable
+   
+Sheets.Add
+ActiveSheet.Name = "ODPivottable1"
+
+Set PSheet = Worksheets("ODPivottable1")
+Set DSheet = Worksheets("OPEN DELIVERY")
+    
+LastRow = DSheet.Cells(Rows.Count, 1).End(xlUp).Row
+LastCol = DSheet.Cells(1, Columns.Count).End(xlToLeft).Column
+Set PRange = DSheet.Range("A1").CurrentRegion
+Set PCache = ActiveWorkbook.PivotCaches.Create(SourceType:=xlDatabase, SourceData:=PRange)
+Set Ptable = PCache.CreatePivotTable(PSheet.Cells(1, 1), TableName:="OD")
+
+
+'Filters
+    
+    With Ptable.PivotFields("CURR USD")
+        .Orientation = xlPageField
+    End With
+    
+'Rows
+    
+    With Ptable.PivotFields("Cred_acct")
+        .Orientation = xlRowField
+        .Position = 1
+    End With
+   
+'Columnas
+    
+    With Ptable.PivotFields("CCAr")
+        .Orientation = xlColumnField
+    End With
+    
+Ptable.AddDataField PSheet.PivotTables("OD").PivotFields("Open_delivery_USD"), "Open_delivery", xlSum
+
+Worksheets("OPEN DELIVERY").Activate 
+
+
+***** CLASSIC PIVOT TABLE*******
+' ADD TO PIVOT NORMAL FORM
+
+
+ActiveSheet.PivotTables("Facturacion").RowAxisLayout xlTabularRow
+ActiveSheet.PivotTables("Facturacion").InGridDropZones = True
+
+ActiveSheet.PivotTables("Facturacion").PivotFields("Lote").Subtotals = Array( _
+        False, False, False, False, False, False, False, False, False, False, False, False)
+
+****** Extraccion de datos access ******
+
+
+Dim cn As Object
+Dim datos As Object
+Dim consultaSQL As String
+Dim conexion As String
+Dim cont As Long
+
+    Set cn = CreateObject("ADODB.Connection")
+    conexion = "Provider = Microsoft.ACE.OLEDB.12.0;" & _
+                    "Data Source=\\nas-mexico\Users\Informacion\Finanzas\Credito y Cobranza\Company Confidential\Mer 2013\NEW MER\DB\CustomerDatabase2.mdb"
+                        
+    consultaSQL = "select * from Sales;"
+    
+    cn.Open conexion
+    
+    Set datos = cn.Execute(consultaSQL)
+    
+    cont = 7
+    
+    Do While Not datos.EOF
+        Cells(cont, 2) = datos.Fields(0)
+        Cells(cont, 3) = datos.Fields(1)
+        Cells(cont, 4) = datos.Fields(2)
+        Cells(cont, 5) = datos.Fields(3)
+        Cells(cont, 6) = datos.Fields(4)
+        Cells(cont, 7) = datos.Fields(5)
+        Cells(cont, 8) = datos.Fields(6)
+        cont = cont + 1
+        datos.MoveNext
+        
+    Loop
+    
+    datos.Close
+    Set datos = Nothing
+    cn.Close
+    Set cn = Nothing
+
+
+****** Actualizar informacion en access ******
+
+Dim cn As Object
+    Dim datos As Object
+    Dim consultaSQL As String
+    Dim conexion As String
+    Dim cont As Long
+    Dim RefID As String
+    Dim Account, Curr, CoCd, Year, MDate As String
+    Dim Sales As String
+    Dim Ultfila As Long
+    
+    Ultfila = Range("B" & Rows.Count).End(xlUp).Row
+    If Ultfila < 7 Then
+        Exit Sub
+    End If
+    
+    Set cn = CreateObject("ADODB.Connection")
+    conexion = "Provider = Microsoft.ACE.OLEDB.12.0;" & _
+                    "Data Source=\\nas-mexico\Users\Informacion\Finanzas\Credito y Cobranza\Company Confidential\Mer 2013\NEW MER\DB\CustomerDatabase2.mdb"
+                        
+    cn.Open conexion
+    
+    For cont = 7 To Ultfila
+        
+            
+            RefID = Cells(cont, 2)
+            Account = Cells(cont, 3)
+            Curr = Cells(cont, 4)
+            CoCd = Cells(cont, 5)
+            Year = Cells(cont, 6)
+            MDate = Cells(cont, 7)
+            Sales = Cells(cont, 8)
+    
+
+                  consultaSQL = "update Sales set Account = " & "'" & Account & "'," & _
+                                                                "Curr = " & "'" & Curr & "'," & _
+                                                                "CoCd = " & "'" & CoCd & "'," & _
+                                                                "Year = " & "'" & Year & "'," & _
+                                                                "MDate = " & "'" & MDate & "'," & _
+                                                                "Sales = " & "'" & Sales & "'" & _
+                                                                " where RefID = " & RefID
+
+            Set datos = cn.Execute(consultaSQL)
+            
+        Next cont
+        
+    Application.ScreenUpdating = True
+    
+    
+    MsgBox "registro(s) actualizado(S) exitosamente!"
+
+   
+****** Nuevo registro en access ******
+
+Dim cn As Object
+    Dim datos As Object
+    Dim consultaSQL As String
+    Dim conexion As String
+    Dim cont As Long
+    Dim RefID As String
+    Dim Curr, CoCd, Year, MDate As String
+    Dim Account, Sales As String
+    Dim Ultfila As Long
+    
+    Ultfila = Range("B" & Rows.Count).End(xlUp).Row
+    If Ultfila < 7 Then
+        Exit Sub
+    End If
+    
+    Set cn = CreateObject("ADODB.Connection")
+    conexion = "Provider = Microsoft.ACE.OLEDB.12.0;" & _
+                    "Data Source=\\nas-mexico\Users\Informacion\Finanzas\Credito y Cobranza\Company Confidential\Mer 2013\NEW MER\DB\CustomerDatabase2.mdb"
+                        
+    cn.Open conexion
+    
+    For cont = 7 To Ultfila
+        
+            RefID = Cells(cont, 2)
+            Account = Cells(cont, 3)
+            Curr = Cells(cont, 4)
+            CoCd = Cells(cont, 5)
+            Year = Cells(cont, 6)
+            MDate = Cells(cont, 7)
+            Sales = Cells(cont, 8)
+
+
+            consultaSQL = "Insert into Sales Values ('" & RefID & "'," & _
+                                                        "'" & Account & "'," & _
+                                                        "'" & Curr & "'," & _
+                                                        "'" & CoCd & "'," & _
+                                                        "'" & Year & "'," & _
+                                                        "'" & MDate & "'," & "'" & Sales & "')"
+                                                       
+
+       Set datos = cn.Execute(consultaSQL)
+            
+        Next cont
+        
+    Application.ScreenUpdating = True
+    
+    
+    MsgBox "registro(s) actualizado(S) exitosamente!"
+    
+    
+
+****** Rango Dinamico ******
+
+
+
+
+Application.ScreenUpdating = False
+Dim LastRow As String
+Dim Str01 As String
+
+LastRow = Workbooks("Garantias.xlsm").Worksheets("1").Cells(Rows.Count, 1).End(xlUp).Row
+Str01 = "A2" & ":" & "D" & LastRow
+Workbooks("Garantias.xlsm").Worksheets("1").Range(Str01).Select
+
+
+****** Actualizar Tabla pivote ******
+
+Dim Ptable As PivotTable
+
+Set Ptable = Workbooks("Garantias.xlsm").Worksheets("RPivottable1").PivotTables("RES")
+Ptable.RefreshTable
+
+
+****** Actualizar Querys ******
+
+
+Dim Cn As WorkbookConnection
+
+    For Each Cn In ThisWorkbook.Connections
+        Cn.Refresh
+    Next Cn
+
+
+******Borrar info de un rango *****
+
+
+Workbooks("Garantias.xlsm").Worksheets("Garantias").Range(Str02).ClearContents
+
+
+
+******Solicitar Contraseña (user Form)******
+
+1.- UserForm ******
+
+ 	Dim X
+X = Me.TextBox1
+If X = "Monsanto" Then
+    Workbooks("Exposure.xlsm").Unprotect ("Erang1")
+    Sheets("Notas de credito").Visible = True
+    Sheets("Notas de credito").Activate
+    Unload Me
+    End If
+If X <> "Monsanto" Then
+    MsgBox "Please check your password."
+    End If
+Application.ScreenUpdating = True
+
+2.- UserForm ******
+
+Public Sub UserForm_Initialize()
+
+End Sub
+
+3.- Modules
+
+UserForm1.Show
+UserForm1.UserForm_Initialize
+
+*********** Remover Duplicados ************
+
+Workbooks("Facturacion.xlsm").Worksheets("Tracking").Range(Traking3).RemoveDuplicates Columns:=1, Header:=xlNo
+
